@@ -1,0 +1,104 @@
+"""
+-You are tasked with creating a link model between Projects and Users.
+-If you have experience with sqlmodel you can write in the actual code. You can also use pseudo code, you can draw diagrams, write SQL, or you can talk through how you would implement any of the prompts below.
+-Start with #1 and work your way to #8.
+-Asking questions or for hints is encouraged. Feel free to use the internet as well (the sqlmodel documentation would be a good place to start).
+-This is very similar to what you see if you were to work on our backend code!
+"""
+from typing import List, Optional
+from sqlmodel import Field, Relationship, Session, SQLModel, create_engine, select
+
+
+class UserProjectLink(SQLModel, table=True):
+    """1. Implement attributes to this class to create a link between the user and project models"""
+    user_id: int = Field(default = None, foreign_key = "user.id",  primary_key=True)
+    project_id: int = Field(default = None, foreign_key = "project.id", primary_key=True)
+     
+    
+class Project(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+
+    users: List["User"] = Relationship(back_populates="projects",       
+                                link_model=UserProjectLink)
+
+
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+    salary: int
+    age: Optional[int] = Field(default=None, index=True)
+
+    projects: List[Project] = Relationship(back_populates="users", link_model=UserProjectLink)
+
+
+sqlite_file_name = "database.db"
+sqlite_url = f"sqlite:///{sqlite_file_name}"
+
+engine = create_engine(sqlite_url, echo=True)
+
+def create_db_and_tables():
+    """2. Create a database and tables for the models"""
+    with Session(engine) as session:
+        user = select(User)
+        project = select(Project)
+    
+          
+        SQLModel.metadata.create_all(engine)
+
+
+def show_young_user_names_on_project(project_id=None):
+    """Given a project id, this function prints all the names of the users who are younger than age 18"""
+    with Session(engine) as session:
+        """8. replace the blanks below to make the query work"""
+        result = select(User.projects).join(Project.name).where(User.projects == project_id).where(User.age < 18)
+        young_user_names = session.exec(result).scalars().all()
+        #young_user_names = session.execute(result).scalars().all()
+        print("Young users:", young_user_names)
+
+
+def create_users():
+    with Session(engine) as session:
+        science_project = Project(name = "science") #"""2. initialize this project"""
+        math_project = Project(name ="math") #"""3. initialize this project"""
+       # user_id = 1
+       # user_name = input("What's the new users name?").lower()
+       # user_salary = int(input("What's the new users salary?"))
+       # user_age = int(input("What's the new users age?"))#"""4. initialize this user"""
+
+        user_theta = User(name = "Nick", salary = 10000, projects = [science_project]) 
+      #"""4. initialize this user and assign them to the science project"""
+        user_alpha = User(name = "Jane", salary = 102000, age = 23, projects = [math_project])
+      #"""5. initialize this user with age over 18 and assign them to the math project"""
+        user_beta = User(name = "Hugo", salary = 22000, age = 17, projects = [science_project, math_project])
+      #"""6. initialize this user with age under 18 and assign them to both math and science projects"""
+
+        """7. write some code below this line to add the users to the database"""
+        #session.add([user_theta, user_alpha, user_beta])
+        session.add(user_theta)
+        session.add(user_alpha)
+        session.add(user_beta)
+        session.commit()     
+        
+        session.refresh(user_theta)
+        session.refresh(user_alpha)
+        session.refresh(user_beta)
+
+        print("User Theta:", user_theta)
+        print("User Theta Projects:", user_theta.projects)
+        print("User Alpha:", user_alpha)
+        print("User Alpha Projects:", user_alpha.projects)
+        print("User Beta:", user_beta)
+        print("User Beta Projects:", user_beta.projects)
+
+        """8. Implement this function which is defined above 'create_users'"""
+        show_young_user_names_on_project(project_id=science_project.id)
+
+
+def main():
+    create_db_and_tables()
+    create_users()
+
+
+if __name__ == "__main__":
+    main()
